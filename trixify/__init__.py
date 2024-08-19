@@ -37,18 +37,18 @@ async def check_versions(client, entries):
 
 		results, _has_failures = await main.run(result_coro, runner_coro)
 		
-		#if len(oldvers) != 0:
-		for application in results:
-			if results.get(application, None) != oldvers.get(application, None):
-				await client.send_message(
-					config.general.room,
-					{
-						"msgtype": "m.text",
-						"body": f"{','.join(["@"+str(user.friendly_name) for user in config.watching[application].users])} - New version of {application}: {results[application].version}",
-						"format": "org.matrix.custom.html",
-						"formatted_body": ','.join([f'<a href="https://matrix.to/#/{user.full_id}">@{user.friendly_name}</a>' for user in config.watching[application].users]) + f": New version of {application} ({results[application].version})",
-					}
-				)
+		if len(oldvers) != 0:
+			for application in results:
+				if results.get(application, None) != oldvers.get(application, None):
+					await client.send_message(
+						config.general.room,
+						{
+							"msgtype": "m.text",
+							"body": f"{','.join(["@"+str(user.friendly_name) for user in config.watching[application].users])} - New version of {application}: {results[application].version}",
+							"format": "org.matrix.custom.html",
+							"formatted_body": ','.join([f'<a href="https://matrix.to/#/{user.full_id}">@{user.friendly_name}</a>' for user in config.watching[application].users]) + f": New version of {application} ({results[application].version})",
+						}
+					)
 
 		oldvers = results
 
