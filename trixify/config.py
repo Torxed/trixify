@@ -18,6 +18,7 @@ import cryptography.hazmat.bindings
 
 from .jsonify import JSON
 from .arguments import args
+from .models.userid import UserID
 
 # Create sane default paths for OpenSC PKCS#11 library and config.toml config
 if os.name == 'nt':
@@ -65,6 +66,25 @@ class Credentials(pydantic.BaseModel, arbitrary_types_allowed=True):
 	devicename :str
 
 
+class ApplicationConfig(pydantic.BaseModel):
+	source :str
+	users :typing.List[UserID] | None = None
+	git :str|None = None
+
+
+class WatchList(pydantic.BaseModel):
+	applications :typing.Dict[str, ApplicationConfig]
+
+	@pydantic.model_validator(mode="before")
+	def cleanup_data(cls, values):
+		return {
+			"applications" : values
+		}
+
+	def __getitem__(self, key):
+		return self.applications[key]
+
+
 class Config(pydantic.BaseModel):
 	"""
 	Defines the sections of config.toml, such as [credentials] and [general].
@@ -72,6 +92,7 @@ class Config(pydantic.BaseModel):
 	"""
 	general :TrixConf
 	credentials :Credentials
+	watching :WatchList
 
 	@pydantic.model_validator(mode="after")
 	def validate_config(self):
