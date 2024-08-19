@@ -52,7 +52,7 @@ async def check_versions(client, entries):
 
 		oldvers = results
 
-		await asyncio.sleep(10)
+		await asyncio.sleep(config.general.check_interval)
 
 
 async def entrypoint():

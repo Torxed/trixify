@@ -35,6 +35,7 @@ class TrixConf(pydantic.BaseModel, arbitrary_types_allowed=True):
 	"""
 	homeserver :str
 	room :str
+	check_interval :int = 3600
 	root :pathlib.Path = default_cache_path
 
 	@pydantic.field_validator("root")
