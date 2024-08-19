@@ -1,2 +1,3 @@
 # trixify
-Matrix notify bot
+
+Matrix notify bot, using nvchecker as a backend.

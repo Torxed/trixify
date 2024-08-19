@@ -21,7 +21,6 @@ from ..output import log
 
 _client = None
 
-
 class MatrixBot(AsyncClient):
 	def __init__(self, *args, **kwargs):
 		super(MatrixBot, self).__init__(*args, **kwargs)
@@ -63,8 +62,7 @@ class MatrixBot(AsyncClient):
 
 
 	async def join_room(self, room :MatrixRoom, event :InviteEvent):
-		print(event)
-		_client.join(room.room_id)
+		self.join(room.room_id)
 		# room = _client.rooms[room.room_id]
 		# log(f"Room {room.name} is encrypted: {room.encrypted}", fg="green")
 

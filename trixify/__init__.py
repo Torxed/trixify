@@ -1,7 +1,9 @@
+__version__ = "0.1"
+
+
 import asyncio
 import traceback
 import logging
-import pyglet
 
 from .output import log
 from .config import config

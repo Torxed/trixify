@@ -10,3 +10,10 @@ room = "!rJpSoeIxtCUHGiRqWh:matrix.org"
 username = "@uptime:matrix.org"
 token = "syt_abcdefgh_ijklmnopqrstuvxyz123_456789"
 devicename = "DEVICENAME"
+
+[watching."archinstall"]
+source = "git"
+git = "https://github.com/archlinux/archinstall.git"
+users = [
+	"@user:matrix.org"
+]
