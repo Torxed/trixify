@@ -22,7 +22,8 @@ classifiers = [
 ]
 dependencies = [
     "pydantic",
-    "matrix-nio[e2e]"
+    "matrix-nio[e2e]",
+    "nvchecker"
 ]
 
 [project.urls]
