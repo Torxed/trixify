@@ -3,3 +3,5 @@
 /*.toml
 /dist
 **/*.egg-info/
+/target
+/Cargo.lock
