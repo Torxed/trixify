@@ -1,0 +1,11 @@
+services:
+    trixify:
+       image: "trixify:latest"
+       container_name: "trixify"
+       build:
+           context: ./
+           dockerfile: Dockerfile
+       restart: "unless-stopped"
+       volumes:
+           - "/etc/localtime:/etc/localtime:ro"
+           - "./configs/trixify/trixify.toml:/app/trixify.toml"
