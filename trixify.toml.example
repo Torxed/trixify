@@ -1,5 +1,5 @@
 [general]
-homeserver = "matrix.org"
+homeserver = "https://matrix.org"
 room = "!rJpSoeIxtCUHGiRqWh:matrix.org"
 
 [credentials]

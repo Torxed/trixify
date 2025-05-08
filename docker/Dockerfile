@@ -5,7 +5,7 @@ FROM archlinux:latest
 ARG CARGO_TARGET_DIR=target
 
 RUN pacman-key --init && pacman-key --populate
-RUN pacman -Syu --noconfirm rust git python nvchecker
+RUN pacman -Syu --noconfirm rust git python nvchecker pkgconf
 
 RUN groupadd -g 1000 api
 RUN useradd -u 1000 -g 1000 -m -s /bin/bash api
@@ -20,5 +20,5 @@ WORKDIR /app/trixify-git
 RUN cargo build --release --all-features
 
 WORKDIR /app
-RUN mv /app/trixify/target/release/trixify /app/trixify
+RUN mv /app/trixify-git/target/release/trixify /app/trixify
 ENTRYPOINT /app/trixify
