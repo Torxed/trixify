@@ -17,13 +17,16 @@ use url::Url;
 
 /// Asynchronously checks the latest version of a repository using the nvrs library.
 /// Asynchronously checks the latest version of a repository using the `nvrs` Rust library.
-async fn check_version(source: &str, repo: &str) -> anyhow::Result<String> {
+async fn check_version(name: &str, source: &str, repo: &str) -> anyhow::Result<String> {
     // Use the Python nvchecker library via a python -c call
     // Ensure nvchecker is installed in the Python environment
     let py_code = format!(r#"
 import asyncio
 import structlog
 import logging
+import json
+import os
+import sys
 from nvchecker import core
 from nvchecker import __main__ as main
 from nvchecker.util import Entries, ResultData, RawResult, RichResult
@@ -31,18 +34,62 @@ from nvchecker.util import Entries, ResultData, RawResult, RichResult
 logger = structlog.get_logger(logger_name=__name__)
 structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.ERROR))
 
+def load_oldvers():
+    """Load previous version data from file"""
+    versions_file = 'trixify_versions.json'
+    if os.path.exists(versions_file):
+        try:
+            with open(versions_file, 'r') as f:
+                data = json.load(f)
+                oldvers = {{}}
+                for key, value in data.items():
+                    if isinstance(value, dict) and 'version' in value:
+                        oldvers[key] = RichResult(
+                            version=value['version'],
+                            gitref=value.get('gitref'),
+                            revision=value.get('revision'),
+                            url=value.get('url')
+                        )
+                return oldvers
+        except (json.JSONDecodeError, KeyError, TypeError):
+            pass
+    return {{}}
+
+def save_oldvers(results):
+    """Save current version data to file"""
+    versions_file = 'trixify_versions.json'
+    if os.path.exists(versions_file):
+        with open(versions_file, 'r') as f:
+            data = json.load(f)
+    else:
+        data = {{}}
+    for key, result in results.items():
+        if hasattr(result, 'version'):
+            data[key] = {{
+                'version': result.version,
+                'gitref': getattr(result, 'gitref', None),
+                'revision': getattr(result, 'revision', None),
+                'url': getattr(result, 'url', None)
+            }}
+    
+    try:
+        with open(versions_file, 'w') as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"Warning: Could not save version data: {{e}}", file=sys.stderr)
+
 async def check_versions(entries):
-    # oldvers :ResultData = {{'git': RichResult(version='v0.3.4', gitref='refs/tags/v0.3.4', revision='b00b1c09e05a35b6019eb98d7c8bc62cc0cb6424', url=None)}}
-    oldvers :ResultData = {{}}
-
-
+    oldvers :ResultData = load_oldvers()
     max_concurrency = 10
     result_q: asyncio.Queue[RawResult] = asyncio.Queue()
+
+    fh.write(f"{{oldvers}}\n")
 
     entry_waiter = core.EntryWaiter()
     task_sem = asyncio.Semaphore(max_concurrency)
     keymanager = core.KeyManager(None)
     dispatcher = core.setup_httpclient()
+
     futures = dispatcher.dispatch(
         entries, task_sem, result_q,
         keymanager, entry_waiter, 1, {{}},
@@ -52,11 +99,22 @@ async def check_versions(entries):
     runner_coro = core.run_tasks(futures)
 
     results, _has_failures = await main.run(result_coro, runner_coro)
+    results["{name}"] = results.pop('git')
 
-    #if len(oldvers) != 0:
+    fh.write(f"Result: {{results}}\n")
+
+    # Check for version changes and save new results
+    new_versions_found = False
     for application in results:
         if results.get(application, None) != oldvers.get(application, None):
             print(results[application].version)
+            new_versions_found = True
+
+    fh.write(f"New version: {{new_versions_found}}\n")
+    
+    # Save current results as the new oldvers for next run
+    if new_versions_found or not oldvers:
+        save_oldvers(results)
 
 asyncio.run(check_versions(
     {{
@@ -86,6 +144,12 @@ asyncio.run(check_versions(
 struct General {
     homeserver: String,
     room:       String,
+    #[serde(default = "default_interval")]
+    interval:   u64,
+}
+
+fn default_interval() -> u64 {
+    3600
 }
 
 #[derive(Deserialize)]
@@ -152,12 +216,14 @@ async fn main() -> anyhow::Result<()> {
         let client_arc = client_arc.clone();
         let watch_entries = watch_entries.clone();
         let notify_room_id = notify_room_id.clone();
+        let check_interval = cfg.general.interval;
         async move {
-            let mut interval = time::interval(Duration::from_secs(3600));
+            let mut interval = time::interval(Duration::from_secs(check_interval));
             loop {
                 interval.tick().await;
                 for (key, entry) in &watch_entries {
-                    match check_version(&entry.source, &entry.git).await {
+                    println!("Checking for new version for '{}'", key);
+                    match check_version(&key, &entry.source, &entry.git).await {
                         Ok(version) => {
                             if let Some(room) = client_arc.get_room(&notify_room_id) {
                                 for user_str in &entry.users {
@@ -168,7 +234,11 @@ async fn main() -> anyhow::Result<()> {
                                 }
                             }
                         }
-                        Err(e) => eprintln!("Error checking version for '{}': {}", key, e),
+                        Err(e) => {
+                            if !e.to_string().contains("Python nvchecker returned no output") {
+                                eprintln!("Error checking version for '{}': {}", key, e);
+                            }
+                        }
                     }
                 }
             }
